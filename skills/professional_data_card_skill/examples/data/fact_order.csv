@@ -1,0 +1,6 @@
+order_id,customer_id,product_id,order_date,quantity,amount_usd,status
+901,101,501,2026-02-01,2,32.50,completed
+902,102,503,2026-02-02,1,65.00,completed
+903,101,502,2026-02-10,1,42.00,pending
+904,103,501,2026-03-12,1,16.25,completed
+905,102,502,2026-03-15,1,42.00,cancelled

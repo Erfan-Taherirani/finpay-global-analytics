@@ -1,0 +1,70 @@
+{
+  "dataset": {
+    "name": "Northstar Commerce Analytics",
+    "subtitle": "Orders, customers and product performance",
+    "description": "A compact e-commerce analytics model connecting customer profiles, product categories and transaction-level orders. Each order is linked to one customer and one product.",
+    "domain": "Commerce / BI",
+    "coverage": "2026-01 through 2026-03",
+    "snapshot": "2026-03-31",
+    "version": "1.0",
+    "owner": "Analytics Engineering",
+    "lifecycle": [
+      "A customer registers and is assigned a stable customer identifier.",
+      "Products are categorized for assortment and segmentation analysis.",
+      "Each order records a product purchase by a customer, a quantity, the sale amount and the order status."
+    ],
+    "overview_notes": [
+      "Order amounts are measured in USD major units. The supplied sample is a generator smoke test, not a production-scale dataset."
+    ],
+    "conventions": [
+      "All monetary amounts shown are USD major units, not cents.",
+      "Order dates use ISO 8601 YYYY-MM-DD values.",
+      "Use the order grain when summing order revenue; do not duplicate orders by joining to other many-valued event tables."
+    ],
+    "quality_checks": [
+      {"name":"Primary keys", "rule":"All customer_id, product_id and order_id values are unique and non-null."},
+      {"name":"Foreign keys", "rule":"Every order customer_id and product_id exists in the respective dimension."},
+      {"name":"Amount validity", "rule":"quantity > 0 and amount_usd >= 0."}
+    ],
+    "limitations": ["This three-table example illustrates the skill generator and does not demonstrate financial reconciliation or complex event lifecycles."],
+    "use_cases": ["Revenue by product category and month", "Order completion rate by customer segment", "Orders and average ticket by channel"]
+  },
+  "tables": [
+    {
+      "name": "dim_customer", "role":"dimension", "title":"Customer profiles", "description":"One record for each registered customer.",
+      "grain":"One customer", "primary_key":["customer_id"], "row_count":3,
+      "columns":[
+        {"name":"customer_id","type":"integer","description":"Stable unique customer key.","nullable":false},
+        {"name":"segment","type":"category","description":"Customer segment used for reporting.","categorical":true,"categories":{"new":"First-time customer","returning":"Customer with prior purchase history"}},
+        {"name":"joined_date","type":"date","description":"Date customer registered."}
+      ]
+    },
+    {
+      "name":"dim_product", "role":"dimension", "title":"Product catalogue", "description":"One record for each catalogued product.",
+      "grain":"One product", "primary_key":["product_id"], "row_count":3,
+      "columns":[
+        {"name":"product_id","type":"integer","description":"Stable product identifier."},
+        {"name":"product_name","type":"string","description":"Name shown in the catalogue."},
+        {"name":"category","type":"category","description":"Merchandise group.","categorical":true,"categories":{"books":"Books and printed media","home":"Household goods","electronics":"Electronic devices"}}
+      ]
+    },
+    {
+      "name":"fact_order", "role":"fact", "title":"Order events", "description":"One record per placed order, including the associated customer and product.",
+      "grain":"One order", "primary_key":["order_id"], "row_count":5,
+      "columns":[
+        {"name":"order_id","type":"integer","description":"Unique order identifier."},
+        {"name":"customer_id","type":"integer","description":"Customer placing the order."},
+        {"name":"product_id","type":"integer","description":"Purchased product identifier."},
+        {"name":"order_date","type":"date","description":"UTC calendar date of purchase."},
+        {"name":"quantity","type":"integer","description":"Units of product purchased.","unit":"items"},
+        {"name":"amount_usd","type":"decimal","description":"Total amount of order.","unit":"USD major units"},
+        {"name":"status","type":"category","description":"Order fulfillment state.","categorical":true,"categories":{"completed":"Order successfully fulfilled","cancelled":"Order cancelled without fulfillment","pending":"Order not yet resolved"}}
+      ],
+      "relationships":[
+        {"from_column":"customer_id","to_table":"dim_customer","to_column":"customer_id","cardinality":"N:1","meaning":"Each order belongs to one registered customer"},
+        {"from_column":"product_id","to_table":"dim_product","to_column":"product_id","cardinality":"N:1","meaning":"Each order contains one product in this simplified model"}
+      ],
+      "business_notes":["The quantity field allows unit-volume reporting; amount_usd is the total monetary measure."]
+    }
+  ]
+}
