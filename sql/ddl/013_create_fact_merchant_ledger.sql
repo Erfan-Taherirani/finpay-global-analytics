@@ -37,18 +37,6 @@ BEGIN
         CONSTRAINT PK_fact_merchant_ledger
             PRIMARY KEY CLUSTERED (entry_id),
 
-        CONSTRAINT FK_ledger_merchant
-            FOREIGN KEY (merchant_sk)
-            REFERENCES main.dim_merchant(merchant_sk),
-
-        CONSTRAINT FK_ledger_currency
-            FOREIGN KEY (currency_code)
-            REFERENCES main.dim_currency(currency_code),
-
-        CONSTRAINT FK_ledger_date
-            FOREIGN KEY (posted_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_ledger_ids
             CHECK (
                 entry_id > 0
@@ -90,31 +78,5 @@ BEGIN
                     + MONTH(posted_at) * 100
                     + DAY(posted_at)
             ),
-
-        -- Each originating event produces one
-        -- ledger posting of the specified type.
-        CONSTRAINT UQ_ledger_event_source
-            UNIQUE (event_type, source_id)
     );
-
-    -- Merchant balances and historical movements
-    CREATE NONCLUSTERED INDEX IX_ledger_merchant_date
-        ON main.fact_merchant_ledger (
-            merchant_sk,
-            posted_date_key
-        )
-        INCLUDE (
-            currency_code,
-            signed_amount_minor,
-            signed_amount_major,
-            signed_amount_major_usd
-        );
-
-    -- Currency-based financial reconciliation
-    CREATE NONCLUSTERED INDEX IX_ledger_merchant_currency
-        ON main.fact_merchant_ledger (
-            merchant_id,
-            currency_code
-        )
-        INCLUDE (signed_amount_minor);
 END;

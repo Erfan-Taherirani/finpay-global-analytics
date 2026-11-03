@@ -39,18 +39,6 @@ BEGIN
         CONSTRAINT PK_fact_refund
             PRIMARY KEY CLUSTERED (refund_id),
 
-        CONSTRAINT FK_fact_refund_intent
-            FOREIGN KEY (intent_id)
-            REFERENCES main.fact_payment_intent(intent_id),
-
-        CONSTRAINT FK_fact_refund_currency
-            FOREIGN KEY (currency_code)
-            REFERENCES main.dim_currency(currency_code),
-
-        CONSTRAINT FK_fact_refund_date
-            FOREIGN KEY (requested_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_fact_refund_basic
             CHECK (
                 refund_id > 0
@@ -101,16 +89,4 @@ BEGIN
                     + DAY(requested_at)
             )
     );
-
-    -- Refund history per payment intent
-    CREATE NONCLUSTERED INDEX IX_fact_refund_intent
-        ON main.fact_refund(intent_id);
-
-    -- Refund KPIs by request date and status
-    CREATE NONCLUSTERED INDEX IX_fact_refund_date_status
-        ON main.fact_refund(requested_date_key, [status])
-        INCLUDE (
-            amount_major_usd,
-            settlement_debit_major_usd
-        );
 END;

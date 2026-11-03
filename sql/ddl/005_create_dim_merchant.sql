@@ -88,45 +88,5 @@ BEGIN
                         '9999-12-31T23:59:59.9999999'
                 )
             ),
-
-        CONSTRAINT UQ_dim_merchant_version
-            UNIQUE (merchant_id, version_number),
-
-        CONSTRAINT UQ_dim_merchant_valid_from
-            UNIQUE (merchant_id, valid_from),
-
-        CONSTRAINT FK_dim_merchant_market
-            FOREIGN KEY (country_code)
-            REFERENCES main.dim_market(country_code),
-
-        CONSTRAINT FK_dim_merchant_currency
-            FOREIGN KEY (settlement_currency)
-            REFERENCES main.dim_currency(currency_code)
     );
-
-    -- At most one current version per merchant
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_dim_merchant_current
-    ON main.dim_merchant (merchant_id)
-    WHERE is_current = 1;
-
-    -- Supports historical as-of lookups
-    CREATE NONCLUSTERED INDEX
-        IX_dim_merchant_history
-    ON main.dim_merchant (
-        merchant_id,
-        valid_from,
-        valid_to
-    )
-    INCLUDE (
-        merchant_sk,
-        version_number,
-        is_current
-    );
-
-    -- Supports country-level merchant analysis
-    CREATE NONCLUSTERED INDEX
-        IX_dim_merchant_country
-    ON main.dim_merchant (country_code)
-    WHERE is_current = 1;
 END;

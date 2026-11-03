@@ -43,9 +43,5 @@ BEGIN
                 DATALENGTH(TRIM(market_name)) > 0
                 AND DATALENGTH(TRIM([timezone])) > 0
             ),
-
-        CONSTRAINT FK_dim_market_currency
-            FOREIGN KEY (currency_code)
-            REFERENCES main.dim_currency(currency_code)
     );
 END;

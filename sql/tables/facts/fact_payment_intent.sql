@@ -422,7 +422,13 @@ BEGIN
                 AS resolved_settlement_currency,
 
             c.signed_up_at
-                AS resolved_signed_up_at
+                AS resolved_signed_up_at,
+
+            CASE
+                WHEN s.buyer_country = m.country_code
+                THEN 'Domestic'
+                ELSE 'Cross-border'
+            END AS transaction_market_type
 
         INTO #ResolvedIntent
         FROM #IntentSource AS s
@@ -551,6 +557,7 @@ BEGIN
             d.customer_sk = s.customer_sk,
             d.created_date_key = s.created_date_key,
             d.buyer_country = s.buyer_country,
+            d.transaction_market_type = s.transaction_market_type,
             d.checkout_channel = s.checkout_channel,
             d.final_outcome = s.final_outcome,
             d.closed_at = s.closed_at,
@@ -572,6 +579,7 @@ BEGIN
                 d.customer_sk,
                 d.created_date_key,
                 d.buyer_country,
+                d.transaction_market_type,
                 d.checkout_channel
                     COLLATE Latin1_General_100_BIN2,
                 d.final_outcome
@@ -591,6 +599,7 @@ BEGIN
                 s.customer_sk,
                 s.created_date_key,
                 s.buyer_country,
+                s.transaction_market_type,
                 s.checkout_channel
                     COLLATE Latin1_General_100_BIN2,
                 s.final_outcome
@@ -616,6 +625,7 @@ BEGIN
             created_date_key,
             created_at,
             buyer_country,
+            transaction_market_type,
             checkout_channel,
             presentment_currency,
             final_outcome,
@@ -637,6 +647,7 @@ BEGIN
             s.created_date_key,
             s.created_at,
             s.buyer_country,
+            s.transaction_market_type,
             s.checkout_channel,
             s.presentment_currency,
             s.final_outcome,
@@ -673,6 +684,7 @@ BEGIN
                 intent_id, merchant_id, customer_id,
                 merchant_sk, customer_sk, created_date_key,
                 created_at, buyer_country,
+                transaction_market_type COLLATE Latin1_General_100_BIN2,
                 checkout_channel COLLATE Latin1_General_100_BIN2,
                 presentment_currency COLLATE Latin1_General_100_BIN2,
                 final_outcome COLLATE Latin1_General_100_BIN2,
@@ -688,6 +700,7 @@ BEGIN
                 intent_id, merchant_id, customer_id,
                 merchant_sk, customer_sk, created_date_key,
                 created_at, buyer_country,
+                transaction_market_type COLLATE Latin1_General_100_BIN2,
                 checkout_channel COLLATE Latin1_General_100_BIN2,
                 presentment_currency COLLATE Latin1_General_100_BIN2,
                 final_outcome COLLATE Latin1_General_100_BIN2,
@@ -702,6 +715,7 @@ BEGIN
                 intent_id, merchant_id, customer_id,
                 merchant_sk, customer_sk, created_date_key,
                 created_at, buyer_country,
+                transaction_market_type COLLATE Latin1_General_100_BIN2,
                 checkout_channel COLLATE Latin1_General_100_BIN2,
                 presentment_currency COLLATE Latin1_General_100_BIN2,
                 final_outcome COLLATE Latin1_General_100_BIN2,
@@ -717,6 +731,7 @@ BEGIN
                 intent_id, merchant_id, customer_id,
                 merchant_sk, customer_sk, created_date_key,
                 created_at, buyer_country,
+                transaction_market_type COLLATE Latin1_General_100_BIN2,
                 checkout_channel COLLATE Latin1_General_100_BIN2,
                 presentment_currency COLLATE Latin1_General_100_BIN2,
                 final_outcome COLLATE Latin1_General_100_BIN2,

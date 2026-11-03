@@ -53,35 +53,5 @@ BEGIN
                 (is_current = 0 AND
                  valid_to < '9999-12-31T23:59:59.9999999')
             ),
-
-        -- No duplicate version for a gateway
-        CONSTRAINT UQ_dim_gateway_version
-            UNIQUE (gateway_id, version_number)
-    );
-
-    -- At most one current version per gateway
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_dim_gateway_current
-    ON main.dim_gateway (gateway_id)
-    WHERE is_current = 1;
-
-    -- Prevent duplicate names among current gateways
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_dim_gateway_current_name
-    ON main.dim_gateway (gateway_name)
-    WHERE is_current = 1;
-
-    -- Support historical as-of lookups
-    CREATE NONCLUSTERED INDEX
-        IX_dim_gateway_history
-    ON main.dim_gateway (
-        gateway_id,
-        valid_from,
-        valid_to
-    )
-    INCLUDE (
-        gateway_sk,
-        is_enabled,
-        version_number
     );
 END;

@@ -45,6 +45,7 @@ BEGIN
         checkout_channel VARCHAR(50) NOT NULL,
         presentment_currency VARCHAR(3) NOT NULL,
         final_outcome VARCHAR(20) NOT NULL,
+        transaction_market_type VARCHAR(15),
 
         -- Payment lifecycle timestamps
         closed_at DATETIME2(6) NULL,

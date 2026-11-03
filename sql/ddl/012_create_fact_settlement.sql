@@ -43,18 +43,6 @@ BEGIN
         CONSTRAINT PK_fact_settlement
             PRIMARY KEY CLUSTERED (settlement_id),
 
-        CONSTRAINT FK_fact_settlement_merchant
-            FOREIGN KEY (merchant_sk)
-            REFERENCES main.dim_merchant(merchant_sk),
-
-        CONSTRAINT FK_fact_settlement_currency
-            FOREIGN KEY (currency_code)
-            REFERENCES main.dim_currency(currency_code),
-
-        CONSTRAINT FK_fact_settlement_date
-            FOREIGN KEY (initiated_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_fact_settlement_basic
             CHECK (
                 settlement_id > 0
@@ -110,20 +98,4 @@ BEGIN
                     + DAY(initiated_at)
             )
     );
-
-    -- Merchant payout history
-    CREATE NONCLUSTERED INDEX IX_settlement_merchant_date
-        ON main.fact_settlement(
-            merchant_sk,
-            initiated_date_key
-        )
-        INCLUDE ([status], amount_major, amount_major_usd);
-
-    -- Payout status and time-series analysis
-    CREATE NONCLUSTERED INDEX IX_settlement_date_status
-        ON main.fact_settlement(
-            initiated_date_key,
-            [status]
-        )
-        INCLUDE (amount_major_usd);
 END;

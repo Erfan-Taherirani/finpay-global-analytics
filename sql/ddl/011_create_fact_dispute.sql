@@ -39,21 +39,6 @@ BEGIN
         CONSTRAINT PK_fact_dispute
             PRIMARY KEY CLUSTERED (dispute_id),
 
-        CONSTRAINT UQ_fact_dispute_intent
-            UNIQUE (intent_id),
-
-        CONSTRAINT FK_fact_dispute_intent
-            FOREIGN KEY (intent_id)
-            REFERENCES main.fact_payment_intent(intent_id),
-
-        CONSTRAINT FK_fact_dispute_currency
-            FOREIGN KEY (currency_code)
-            REFERENCES main.dim_currency(currency_code),
-
-        CONSTRAINT FK_fact_dispute_date
-            FOREIGN KEY (opened_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_fact_dispute_basic
             CHECK (
                 dispute_id > 0
@@ -96,12 +81,4 @@ BEGIN
                     + DAY(opened_at)
             )
     );
-
-    -- Dispute trend analysis
-    CREATE NONCLUSTERED INDEX IX_fact_dispute_date_status
-        ON main.fact_dispute(opened_date_key, [status])
-        INCLUDE (
-            disputed_amount_major_usd,
-            settlement_debit_major_usd
-        );
 END;

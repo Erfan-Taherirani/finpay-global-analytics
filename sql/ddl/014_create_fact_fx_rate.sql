@@ -32,14 +32,6 @@ BEGIN
                 currency_code
             ),
 
-        CONSTRAINT FK_fx_currency
-            FOREIGN KEY (currency_code)
-            REFERENCES main.dim_currency(currency_code),
-
-        CONSTRAINT FK_fx_date
-            FOREIGN KEY (rate_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_fx_rate_positive
             CHECK (
                 usd_per_major_unit IS NULL
@@ -72,16 +64,4 @@ BEGIN
                     + DAY(rate_date)
             )
     );
-
-    -- Efficient history lookups by currency
-    CREATE NONCLUSTERED INDEX IX_fx_currency_date
-        ON main.fact_fx_rate (
-            currency_code,
-            rate_date
-        )
-        INCLUDE (
-            usd_per_major_unit,
-            observation_date,
-            rate_status
-        );
 END;

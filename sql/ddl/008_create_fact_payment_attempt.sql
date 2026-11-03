@@ -42,18 +42,6 @@ BEGIN
         CONSTRAINT PK_fact_payment_attempt
             PRIMARY KEY CLUSTERED (attempt_id),
 
-        CONSTRAINT FK_fact_attempt_intent
-            FOREIGN KEY (intent_id)
-            REFERENCES main.fact_payment_intent(intent_id),
-
-        CONSTRAINT FK_fact_attempt_gateway
-            FOREIGN KEY (gateway_sk)
-            REFERENCES main.dim_gateway(gateway_sk),
-
-        CONSTRAINT FK_fact_attempt_date
-            FOREIGN KEY (started_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_fact_attempt_ids
             CHECK (
                 attempt_id > 0
@@ -87,37 +75,5 @@ BEGIN
                 failure_reason IS NULL
                 OR DATALENGTH(TRIM(failure_reason)) > 0
             )
-    );
-
-    -- One attempt number per payment intent
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_fact_attempt_intent_sequence
-    ON main.fact_payment_attempt (
-        intent_id,
-        attempt_number
-    );
-
-    -- Gateway performance and time-series analysis
-    CREATE NONCLUSTERED INDEX
-        IX_fact_attempt_gateway_date
-    ON main.fact_payment_attempt (
-        gateway_sk,
-        started_date_key
-    )
-    INCLUDE (
-        outcome,
-        payment_method
-    );
-
-    -- Date-based analysis and filtering
-    CREATE NONCLUSTERED INDEX
-        IX_fact_attempt_date
-    ON main.fact_payment_attempt (
-        started_date_key,
-        outcome
-    )
-    INCLUDE (
-        gateway_sk,
-        payment_method
     );
 END;

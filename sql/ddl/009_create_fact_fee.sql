@@ -38,18 +38,6 @@ BEGIN
         CONSTRAINT PK_fact_fee
             PRIMARY KEY CLUSTERED (fee_id),
 
-        CONSTRAINT FK_fact_fee_intent
-            FOREIGN KEY (intent_id)
-            REFERENCES main.fact_payment_intent(intent_id),
-
-        CONSTRAINT FK_fact_fee_currency
-            FOREIGN KEY (settlement_currency)
-            REFERENCES main.dim_currency(currency_code),
-
-        CONSTRAINT FK_fact_fee_date
-            FOREIGN KEY (assessed_date_key)
-            REFERENCES main.dim_date(date_key),
-
         CONSTRAINT CK_fact_fee_ids
             CHECK (
                 fee_id > 0
@@ -107,44 +95,5 @@ BEGIN
                     + MONTH(assessed_at) * 100
                     + DAY(assessed_at)
             )
-    );
-
-    -- One assessment per fee category per intent
-    -- Under the simplified FinPay business model
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_fact_fee_intent_type
-    ON main.fact_fee (
-        intent_id,
-        fee_type
-    );
-
-    -- One dispute fee per dispute
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_fact_fee_dispute
-    ON main.fact_fee (dispute_id)
-    WHERE dispute_id IS NOT NULL;
-
-    -- Fee analysis by assessment date
-    CREATE NONCLUSTERED INDEX
-        IX_fact_fee_date_type
-    ON main.fact_fee (
-        assessed_date_key,
-        fee_type
-    )
-    INCLUDE (
-        settlement_currency,
-        amount_settlement_major_usd
-    );
-
-    -- Currency-based financial analysis
-    CREATE NONCLUSTERED INDEX
-        IX_fact_fee_currency_date
-    ON main.fact_fee (
-        settlement_currency,
-        assessed_date_key
-    )
-    INCLUDE (
-        fee_type,
-        amount_settlement_major
     );
 END;

@@ -27,9 +27,6 @@ BEGIN
         CONSTRAINT PK_dim_date
             PRIMARY KEY CLUSTERED (date_key),
 
-        CONSTRAINT UQ_dim_date_date_utc
-            UNIQUE NONCLUSTERED (date_utc),
-
         CONSTRAINT CK_dim_date_calendar
             CHECK (
                 date_key =

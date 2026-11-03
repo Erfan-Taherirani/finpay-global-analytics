@@ -70,44 +70,5 @@ BEGIN
                         '9999-12-31T23:59:59.9999999'
                 )
             ),
-
-        -- No duplicate version or start time
-        CONSTRAINT UQ_dim_customer_version
-            UNIQUE (customer_id, version_number),
-
-        CONSTRAINT UQ_dim_customer_valid_from
-            UNIQUE (customer_id, valid_from),
-
-        -- Every historical country must be valid
-        CONSTRAINT FK_dim_customer_market
-            FOREIGN KEY (country_code)
-            REFERENCES main.dim_market(country_code)
     );
-
-    -- At most one current version per customer
-    CREATE UNIQUE NONCLUSTERED INDEX
-        UX_dim_customer_current
-    ON main.dim_customer (customer_id)
-    WHERE is_current = 1;
-
-    -- Support point-in-time historical lookups
-    CREATE NONCLUSTERED INDEX
-        IX_dim_customer_history
-    ON main.dim_customer (
-        customer_id,
-        valid_from,
-        valid_to
-    )
-    INCLUDE (
-        customer_sk,
-        version_number,
-        is_current
-    );
-
-    -- Support current customer segmentation
-    CREATE NONCLUSTERED INDEX
-        IX_dim_customer_country_current
-    ON main.dim_customer (country_code)
-    INCLUDE (is_verified, acquisition_channel)
-    WHERE is_current = 1;
 END;
