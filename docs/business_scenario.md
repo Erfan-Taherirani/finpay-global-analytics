@@ -1,78 +1,87 @@
-# FinPay Global — Business Scenario & Operating Plan
+# FinPay Global — PSP Business Scenario and Executive Operating Model (v3.0)
 
-**Version:** 2.0 · **Status:** Fictional training scenario · **Period:** 2021-10-01 to 2026-09-30 · **Audience:** BI analysts and hiring reviewers
+**Updated:** 2026-11-04  
+**Status:** Fictional portfolio scenario, aligned to revised analytics and SQL Server warehouse design.
 
-## Executive summary
+## 1. Company and customer proposition
 
-FinPay Global is a **fictional payment service provider (PSP)** offering an API, hosted checkout, payment routing, reconciliation and merchant payouts to digital businesses. Merchants integrate once and accept cards, digital wallets and bank debit through five fictional gateway partners. FinPay makes money by assessing merchant processing fees; it incurs separate third-party processor expenses. It is **not** a bank, deposit-taker, creditor or holder of actual customer funds in this simulation.
+FinPay Global is a **fictional payment service provider (PSP)** offering a hosted checkout and orchestration layer to merchants operating across 12 modeled markets: US, GB, DE, FR, CA, AU, JP, CN, IR, RU, MX, and EG. Customers pay via card, digital wallet or bank debit. The platform routes payment attempts through five fictional gateway providers (AtlasFlow, BlueHarbor, OrbitRoute, NovaSwitch, PineBridge) and may retry failed attempts. It records completed captures, merchant processing fees, processor costs, post-payment refunds and disputes, merchant payouts, and a merchant-payable subledger.
 
-This project simulates the internal analytics of the PSP; all customers, merchants, gateways, events, pricing and failures are invented. **Historical reference FX is the only proposed real-data input** and is loaded separately, with provenance and daily observation timestamps. No operational transactions or risk rates are real.
+This is a synthetic BI portfolio, **not** a claim that any company can legally or commercially service every modeled market. The Iran scenario is USD-only in the 10-currency dataset; the Russia scenario is fictional. No real merchant, customer, bank, fraud or authorization event is represented.
 
-## Products and customer value proposition
+## 2. Data and product scope
 
-1. **Unified Checkout:** one API / hosted page supporting three payment methods and merchant-local prices.
-2. **Smart Gateway Routing:** five fictional processors; conditional authorization outcomes and optional retries. Merchant- and market-level route performance is measurable.
-3. **Merchant Console:** TPV, approval trends, payment disputes, refunds and payout status.
-4. **Financial Operations:** monthly or weekly merchant payout elections, a signed merchant-payable subledger, fees and costs, and period reconciliation.
-5. **Analytics:** merchant cohorts, volume concentration, pricing/margin segmentation, dispute exposure, gateway reliability and payout SLAs.
+| Category | Defined scope |
+|---|---|
+| Period | 60 calendar months: 2021-10-01 to 2026-09-30; UTC end exclusive 2026-10-01 |
+| Portfolio | 2,000 merchants; 100,000 registered customers plus anonymous guest checkouts |
+| Data volume | 8–10 million rows design target across six dimensions and eight facts |
+| Gateway network | Five fictional payment gateways |
+| Methods | `card`, `wallet`, `bank_debit` |
+| Currency | USD, EUR, GBP, CAD, AUD, JPY, CNY, RUB, MXN, EGP |
+| Reporting | Local settlement-currency principal; optional normalized USD based on verified historical daily FX observations |
+| Storage | Processed CSV → SQL Server `stg` full snapshot → stored procedures → `main` analytical warehouse → Power BI |
+| Historical dimensions | SCD Type 2 for merchant/customer/gateway; first ETL observation does not recreate earlier attribute history |
 
-## Customers, markets and product boundaries
+**Commercial model:** Merchants pay FinPay processing fees per captured transaction; FinPay incurs processor fees. The spread is **processing contribution before operating overhead**. Dispute fees, where assessed, are modeled separately. Merchant captured principal and payout flows are **merchant money**, not PSP revenue. The simulated business does not generate FX spread, real-time conversion revenue, interchange detail, fraud loss reserves, marketing expense, staffing overhead, or complete corporate P&L.
 
-- **Merchants:** 2,000 fictional accounts across US, UK, Germany, France, Canada, Australia, Japan, China, Iran, Russia, Mexico and Egypt.
-- **Buyers:** 100,000 fictional registered customers, plus anonymous guest checkouts.
-- **Transaction currencies:** USD, EUR, GBP, CAD, AUD, JPY, CNY, RUB, MXN and EGP. Germany and France share EUR.
-- **Iran handling:** The 10-currency limit excludes IRR. Iranian merchant records are **sandbox / what-if entities with USD-denominated fictional activity**; these are not claims of cross-border payment service availability, authorization, settlement arrangements or regulatory permission. Russian activity is also an abstract fictional domestic scenario, not a claim that global providers legally route these payments. The data must never be used as compliance guidance.
-- **Payment methods:** card, wallet, bank_debit. The data does not model instant transfers, BNPL, stablecoins, full issuer authorization states, FX spreads, taxes, or real fraud scoring.
-- **Local-currency processing:** A purchase is presented and settled in the merchant's single configured currency, which avoids inventing FX quotes for financial posting. USD reporting *requires* a real historical USD rate series via `src/fetch_fx.py`.
+## 3. Lifecycle of a payment and its money
 
-## Business model and unit economics
+1. A buyer starts a checkout (`fact_payment_intent`) for one merchant; that checkout can be abandoned, pending, failed, or ultimately captured.
+2. The buyer/payment method may generate zero to three attempts (`fact_payment_attempt`), each routed to a gateway. A retry is a new **attempt**, not a new **checkout**.
+3. A successfully captured intent produces merchant captured principal and fee/cost assessments (`fact_fee`). Payment and fee timestamps may differ.
+4. Post-capture, a merchant may process a partial/full refund or receive a dispute. The simplified synthetic model limits these cases and does not represent every real PSP outcome.
+5. Successful refunds and lost disputes reduce the merchant-payable subledger. A dispute fee, if assessed, is another merchant debit. Processor expense never debits merchant payable.
+6. Merchant payouts are instructions (`fact_settlement`). Only a completed payout reduces the payable ledger (`fact_merchant_ledger`); pending/failed ones do not.
+7. The merchant's payable balance is the sum of signed local-currency ledger postings. Reconcile it at the `(merchant, currency)` level with exact integer minor units.
 
-**Revenue engine:** Merchant fees = percentage of captured local amount + a fixed local-currency component, by merchant pricing tier. A lost dispute can trigger an additional assessed dispute fee. Failed authorizations do not themselves generate merchant revenue in v2.
+## 4. Why Domestic/Cross-border is now important
 
-**Variable costs:** Each captured payment creates one processing-cost record, with assumed method-based cost. Cost is a **platform expense**, not a debit against merchant payable.
+A newly introduced warehouse attribute, `main.fact_payment_intent.transaction_market_type`, is derived by comparing the **buyer country** with the **merchant country**:
 
-**Profitability proxy:** Processing contribution = merchant fees + dispute fees − processor costs; excludes payroll, compliance, operations, taxes, bank fees not modeled, funding costs and other overhead. It is not accounting net profit.
+```sql
+CASE
+    WHEN i.buyer_country IS NULL OR m.country_code IS NULL THEN 'Unknown'
+    WHEN i.buyer_country = m.country_code THEN 'Domestic'
+    ELSE 'Cross-border'
+END
+```
 
-**Merchant payable:** Credits from captures; debits from merchant fees, successful refunds, lost dispute principal, dispute fees and completed payouts. Payouts cannot exceed the positive available merchant balance at initiation. Disputes after payouts can cause deficits, recorded as receivables.
+The earlier documented loader uses `CASE WHEN buyer_country = merchant.country_code THEN 'Domestic' ELSE 'Cross-border' END`, which would silently classify missing country values as Cross-border. **Recommendation:** validate non-null source countries or adopt explicit `Unknown`; this is a recommended contract correction and is not confirmed implemented.
 
-## Fictional five-year evolution
+This field supports segment analysis of checkout conversion, attempt failure, retry behavior, captured TPV, merchant concentration and processing contribution. It **does not** indicate the card's issuer country, international network fee, foreign-exchange trade, conversion fee, cross-border settlement, sanctions compliance, or a realized FX spread. In this synthetic model, presentment and merchant settlement currency are the same.
 
-| Stage | Period | Strategy | Designed analysis opportunity |
-|---|---|---|---|
-| Foundation | 2021-10 to 2022-09 | First merchants, mostly cards, early integration | Acquisition cohorts and setup frictions |
-| Scale-up | 2022-10 to 2023-09 | Merchant acquisition and regional traffic increase | Merchant segmentation and success by region |
-| Reliability | 2023-10 to 2024-09 | Routing improvement; temporary provider disturbances | Retry effectiveness, incident analysis |
-| Product expansion | 2024-10 to 2025-09 | Wallet share grows, larger enterprises sign up | Payment method mix, revenue concentration |
-| Efficiency | 2025-10 to 2026-09 | Optimize gateway economics, pricing and payouts | Contribution margins, cost leakage, reliability |
+## 5. Leadership decisions and responsibilities
 
-The generator simulates time trends rather than hard-coding exact business KPI results. These phases are a storyline, **not a historical account**.
-
-## Operating workflows
-
-**Merchant onboarding → checkout intent → payment attempt(s) → exactly one capture or no capture → assessed merchant/processor fees → optional refund or dispute → payout schedule → ledger/reconciliation.** A payment intent is not a payment attempt; unsuccessful retries do not generate additional captured transactions.
-
-Finance monitors merchant balances and payout aging. Product monitors conversion and wallets. Payment operations monitors gateway declines, latency and incidents. Account management monitors merchant growth and retention. Risk monitors refund/dispute cohorts with maturity windows.
-
-## Operating principles and analytical guardrails
-
-- **Reporting timezone:** UTC for stored events and global dashboards; local dates only when the report explicitly changes basis.
-- **Money:** integer minor units; explicit `dim_currency.minor_units` (JPY = 0), no binary floats in money amounts. No summation of unlike currencies.
-- **Revenue versus volume:** TPV is not FinPay revenue; gross captured TPV includes amounts later refunded.
-- **Approval versus conversion:** attempt success and intent success use different denominators.
-- **Temporal integrity:** only historical events through 2026-09-30; delayed refunds/disputes beyond cutoff aren't backfilled into the snapshot.
-- **Risk:** the financial model is deliberately simplified; especially disputes, failed payouts, beneficiary bank charges, settlement reserves, taxes and regulation.
-
-## Stakeholders and decisions
-
-| Stakeholder | Decision supported | Evidence |
+| Leadership | Primary concern | Decisions driven by the revised reporting |
 |---|---|---|
-| COO / Payments lead | Route traffic away from unreliable gateways | Failure by gateway × region × method; p95 latency |
-| VP Product | Offer more wallet or bank-debit options | Payment mix, conversion trends, cohorts |
-| VP Sales | Retain high-value merchants; identify potential upsell | Merchant TPV, margin and retention |
-| CFO | Identify negative margins, reconcile payables | Fee and cost facts, merchant payable ledger |
-| Head of Risk | Investigate merchants with abnormal chargebacks | Mature capture cohorts and disputes |
-| Treasury / Operations | Reduce payout delays | SLA, failed payouts, merchant balance |
+| CEO | Sustainable portfolio growth + controlled risk | Which geographies, merchants and channels are growing profitably? |
+| CFO / Finance | Transaction processing margin + balance integrity | Which fee/cost mix is healthy; do ledgers reconcile precisely; what payable exposure remains? |
+| Head of Payments | End-to-end checkout and gateway performance | Where do first attempts fail, which retries rescue sales, and what patterns merit investigation? |
+| Head of Merchant Success | Activation, retention and high-value relationships | Which merchant cohorts need activation and retention support? |
+| Risk / Servicing | Refunds, disputes and processing backlog | Which captured cohorts and merchant segments create the most servicing load? |
+| Operations | Payout throughput and SLA proxy | Which payouts are pending or late, and who needs escalation? |
+| BI / Data Engineering | Publishable metric consistency | Are filters, amount types, date roles, SCD2 lookups and FX rates trustworthy? |
 
-## Success criteria for the portfolio project
+## 6. Financial boundaries — CEO interpretation
 
-Provide reproducible generator, 8–10 million rows including dimensions and facts, documented PK/FK/metric grain, PostgreSQL DDL and tests, proof of exact local-currency ledger reconciliation, honest FX provenance, and a Power BI star-model-ready semantic layer. Recommendations should include limitations and the effect of data-generation assumptions.
+For a successfully captured payment of USD 100.00, a merchant processing fee of USD 3.00, a processor cost of USD 1.80, and a completed payout of USD 97.00:
+
+- Captured TPV = USD 100.00.
+- PSP processing fee revenue = USD 3.00.
+- Processor cost = USD 1.80.
+- **Modeled processing contribution = USD 1.20**, before labor, infrastructure, fraud exposure and other expenses.
+- The completed USD 97.00 payout is settlement of a merchant payable, **not** USD 97.00 of PSP expense or a reduction to TPV.
+- The merchant ledger returns to USD 0.00 if all modeled entries are posted correctly.
+
+## 7. Important business limitations
+
+- The dataset is deterministic and synthetic; gateway incidents, growth patterns and risk correlations are simulated, not external market estimates.
+- Real FX status must be verified in the actual warehouse before unrestricted USD reporting; an earlier project export was incomplete for non-USD observations.
+- The 12 markets do not mean 12 domestic currencies; IRR is not included.
+- `onboarded_at`, customer signup and payment events do not identify campaign cost or ROI; **CAC/ROAS are unavailable**.
+- The gateway attempt model does not capture every card-authorization substage or full network chargeback monitoring standards.
+- A late dispute/refund may cause negative merchant payable; this is potential recoverable merchant exposure, **not automatically a recognized PSP loss**.
+- The simulator batches monthly payouts despite an earlier merchant payout-frequency preference; do not claim the payout engine implements contractual weekly payout schedules.
+
+**Next:** [`core_business_questions.md`](core_business_questions.md) is the management-question register, and [`kpi_definitions.md`](kpi_definitions.md) is the only canonical source of measure formulas. The data-dictionary addendum tracks newer derived fields and quality corrections.
